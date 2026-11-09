@@ -201,6 +201,10 @@ async function buscarEpisodios(titulo, letra, pedaco) {
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader('Cache-Control', 'no-cache');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
 
@@ -212,10 +216,10 @@ const MANIFEST = {
   description: 'Canais ao vivo, filmes e séries do Saimo TV.',
   logo:        'https://canais-saimo.pages.dev/favicon.ico',
   resources:   ['catalog', 'stream', 'meta'],
-  types:       ['tv', 'movie', 'series'],
+  types:       ['tv', 'channel', 'movie', 'series'],
   catalogs: [
     {
-      type: 'tv',
+      type: 'channel',
       id:   'saimo-ao-vivo',
       name: 'Saimo TV — Ao Vivo',
       extra: [{ name: 'genre', isRequired: false }]
@@ -245,7 +249,7 @@ const MANIFEST = {
 app.get('/manifest.json', (req, res) => res.json(MANIFEST));
 
 /* ── Catalog: canais ao vivo ─────────────────────────────────────────────────── */
-app.get('/catalog/tv/saimo-ao-vivo.json', async (req, res) => {
+app.get('/catalog/channel/saimo-ao-vivo.json', async (req, res) => {
   try {
     const canais   = await buscarCatalogo();
     const genero   = req.query.genre || '';
@@ -255,7 +259,7 @@ app.get('/catalog/tv/saimo-ao-vivo.json', async (req, res) => {
     const generos  = [...new Set(canais.map(c => c.categoria).filter(Boolean))];
     const metas    = filtrados.map(c => ({
       id:          idCanal(c.nome),
-      type:        'tv',
+      type:        'channel',
       name:        c.nome,
       poster:      c.logo || undefined,
       logo:        c.logo || undefined,
@@ -376,7 +380,13 @@ app.get('/meta/series/:id.json', async (req, res) => {
 });
 
 /* ── Stream: canal ao vivo ───────────────────────────────────────────────── */
+app.get('/stream/channel/:id.json', async (req, res) => {
+  return streamCanal(req, res);
+});
 app.get('/stream/tv/:id.json', async (req, res) => {
+  return streamCanal(req, res);
+});
+async function streamCanal(req, res) {
   try {
     const id    = req.params.id;
     const canais = await buscarCatalogo();
@@ -403,7 +413,7 @@ app.get('/stream/tv/:id.json', async (req, res) => {
     console.error('[stream/tv]', err.message);
     res.status(500).json({ streams: [] });
   }
-});
+}
 
 /* ── Stream: filme ───────────────────────────────────────────────────────── */
 app.get('/stream/movie/:id.json', async (req, res) => {
